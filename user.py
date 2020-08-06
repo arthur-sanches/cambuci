@@ -35,7 +35,3 @@ class User:
                                   }
         self.__service_accounts.append(service_login_password)
         # example {'google': {'tuta': 'senha123'}}
-
-    def load_service_accounts(self):
-        
-        pass
