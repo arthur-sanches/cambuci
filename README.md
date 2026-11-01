@@ -1,6 +1,6 @@
 # Cambuci
 
-**Cambuci** is a fully local password manager. Nothing is stored in the cloud. Your vault is JSON, encrypted with **AES-256-GCM** (key derived via **PBKDF2-HMAC-SHA256** from your master password), then hidden inside a PNG you choose using simple LSB steganography. The downloaded PNG **is** your vault.
+**Cambuci** is a fully local password manager. Nothing is stored in the cloud. Your vault is JSON, encrypted with **AES-256-GCM** (key derived via **Argon2id** from your master password; older images that used PBKDF2-HMAC-SHA256 still unlock and are re-saved with Argon2id), then hidden inside a PNG you choose using simple LSB steganography. The downloaded PNG **is** your vault.
 
 ## Important
 
@@ -11,7 +11,7 @@
 
 ## Requirements
 
-- Node.js 20+ (LTS recommended)
+- Node.js 22.16+ (uses built-in `crypto.argon2`; LTS recommended)
 
 ## Run
 
@@ -39,7 +39,7 @@ npm test
 ## Project layout
 
 - `src/server.js` — Express API and static UI
-- `src/crypto.js` — encrypt/decrypt vault payload
+- `src/crypto.js` — encrypt/decrypt vault payload (Argon2id, AES-256-GCM)
 - `src/stego.js` — PNG LSB embed/extract
 - `src/vault.js` — vault JSON helpers
 - `public/` — single-page UI
