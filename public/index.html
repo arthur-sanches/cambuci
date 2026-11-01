@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cambuci</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Cambuci</h1>
+      <p class="tagline">Local password vault hidden in a PNG</p>
+    </header>
+
+    <main>
+      <section id="landing" class="panel">
+        <h2>Welcome</h2>
+        <p class="hint">
+          Your vault lives only in your PNG image and master password. Nothing
+          leaves this machine.
+        </p>
+        <div class="landing-actions">
+          <button type="button" id="btn-show-unlock" class="primary">
+            Unlock vault
+          </button>
+          <button type="button" id="btn-show-new">Create new vault</button>
+        </div>
+      </section>
+
+      <section id="unlock-form" class="panel hidden">
+        <h2>Unlock vault</h2>
+        <form id="form-unlock">
+          <label>
+            Vault PNG
+            <input type="file" name="image" accept="image/png" required />
+          </label>
+          <p class="hint">
+            <button type="button" class="linkish open-vault-file">Open PNG on disk…</button>
+            <span id="unlock-file-label"></span>
+          </p>
+          <label>
+            Master password
+            <input type="password" name="masterPassword" autocomplete="current-password" required />
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="primary">Unlock</button>
+            <button type="button" class="linkish" data-back>Back</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="new-form" class="panel hidden">
+        <h2>Create new vault</h2>
+        <form id="form-new">
+          <label>
+            Cover PNG (any image; vault data will be hidden inside)
+            <input type="file" name="image" accept="image/png" required />
+          </label>
+          <p class="hint">
+            <button type="button" class="linkish open-vault-file">Open PNG on disk…</button>
+            <span id="new-file-label"></span>
+          </p>
+          <label>
+            Master password (min 12 characters)
+            <input type="password" name="masterPassword" autocomplete="new-password" required minlength="12" />
+          </label>
+          <label>
+            Confirm master password
+            <input type="password" name="masterPasswordConfirm" autocomplete="new-password" required minlength="12" />
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="primary">Create vault</button>
+            <button type="button" class="linkish" data-back>Back</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="vault-ui" class="hidden">
+        <div class="vault-toolbar">
+          <input type="search" id="service-filter" placeholder="Filter services…" />
+          <div class="toolbar-buttons">
+            <button type="button" id="btn-save" class="primary">Save image</button>
+            <button type="button" id="btn-lock">Lock</button>
+          </div>
+        </div>
+        <p id="capacity-warning" class="warning hidden"></p>
+        <div class="vault-layout">
+          <aside class="service-list-wrap">
+            <h3>Services</h3>
+            <ul id="service-list"></ul>
+            <form id="form-add-service" class="inline-form">
+              <input type="text" name="name" placeholder="New service name" required />
+              <input type="text" name="login" placeholder="Login / email" required />
+              <input type="password" name="password" placeholder="Password" required />
+              <button type="submit">Add service</button>
+            </form>
+          </aside>
+          <section class="login-panel">
+            <h3 id="selected-service-title">Select a service</h3>
+            <div id="login-empty" class="hint">Choose a service to view logins.</div>
+            <table id="login-table" class="hidden">
+              <thead>
+                <tr>
+                  <th>Login</th>
+                  <th>Password</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="login-rows"></tbody>
+            </table>
+            <form id="form-add-login" class="inline-form hidden">
+              <input type="text" name="login" placeholder="New login" required />
+              <input type="password" name="password" placeholder="Password" required />
+              <button type="submit">Add login</button>
+            </form>
+            <button type="button" id="btn-delete-service" class="hidden danger-text">
+              Delete service
+            </button>
+          </section>
+        </div>
+
+        <details class="generator-panel">
+          <summary>Password generator</summary>
+          <form id="form-generate">
+            <label>
+              Length
+              <input type="number" name="length" min="12" max="64" value="20" />
+            </label>
+            <label><input type="checkbox" name="uppercase" checked /> Uppercase</label>
+            <label><input type="checkbox" name="lowercase" checked /> Lowercase</label>
+            <label><input type="checkbox" name="digits" checked /> Digits</label>
+            <label><input type="checkbox" name="symbols" checked /> Symbols</label>
+            <button type="submit">Generate</button>
+            <output id="generated-password"></output>
+            <button type="button" id="btn-copy-generated" class="hidden">Copy</button>
+          </form>
+        </details>
+      </section>
+
+      <p id="global-error" class="error hidden" role="alert"></p>
+    </main>
+
+    <dialog id="save-dialog">
+      <form id="form-save">
+        <h3>Save vault image</h3>
+        <p class="hint">
+          Saves back into the same PNG you opened. Losing that file or your
+          master password means losing the vault.
+        </p>
+        <p id="save-target-name" class="hint"></p>
+        <label>
+          Master password
+          <input type="password" name="masterPassword" autocomplete="current-password" required minlength="12" />
+        </label>
+        <div class="form-actions">
+          <button type="submit" value="save" class="primary">Save image</button>
+          <button type="button" value="cancel" id="save-cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

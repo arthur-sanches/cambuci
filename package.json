@@ -1,0 +1,20 @@
+{
+  "name": "cambuci",
+  "version": "1.0.0",
+  "description": "Local password manager with vault hidden in PNG steganography",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "multer": "^1.4.5-lts.1",
+    "pngjs": "^7.0.0"
+  }
+}
