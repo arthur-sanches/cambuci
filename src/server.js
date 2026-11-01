@@ -3,7 +3,7 @@ import express from 'express';
 import session from 'express-session';
 import multer from 'multer';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { MemorySessionStore } from './memorySessionStore.js';
 import {
   encryptVault,
@@ -33,7 +33,7 @@ import {
 } from './sessionVault.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = process.env.PORT ? Number(process.env.PORT) : 8000;
+const DEFAULT_PORT = process.env.PORT ? Number(process.env.PORT) : 8000;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -291,17 +291,43 @@ app.post('/api/generate', (req, res) => {
   }
 });
 
-const server = app.listen(PORT, '127.0.0.1', () => {
-  // Intentionally minimal logging (no secrets)
-  console.log(`Cambuci listening on http://127.0.0.1:${PORT}`);
-});
-
-function shutdown() {
-  server.close(() => {
-    process.exit(0);
+export function startServer({ port = DEFAULT_PORT } = {}) {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, '127.0.0.1');
+    const onError = (err) => reject(err);
+    server.once('error', onError);
+    server.once('listening', () => {
+      server.removeListener('error', onError);
+      const { port: boundPort } = server.address();
+      const url = `http://127.0.0.1:${boundPort}`;
+      console.log(`Cambuci listening on ${url}`);
+      resolve({ server, port: boundPort, url });
+    });
   });
-  setTimeout(() => process.exit(0), 2000).unref();
 }
 
-process.once('SIGINT', shutdown);
-process.once('SIGTERM', shutdown);
+export function stopServer(server) {
+  return new Promise((resolve) => {
+    if (!server) {
+      resolve();
+      return;
+    }
+    server.close(() => resolve());
+    setTimeout(resolve, 2000).unref();
+  });
+}
+
+function isDirectRun() {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return pathToFileURL(path.resolve(entry)).href === import.meta.url;
+}
+
+if (isDirectRun()) {
+  const { server } = await startServer();
+  function shutdown() {
+    stopServer(server).then(() => process.exit(0));
+  }
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+}

@@ -20,7 +20,15 @@ npm install
 npm start
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000) (or the port shown in the terminal if you set `PORT`).
+That starts the local server and opens the Cambuci desktop window. Closing the window stops the server.
+
+To run the HTTP server in a browser instead:
+
+```bash
+npm run server
+```
+
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) (or the port shown in the terminal if you set `PORT`).
 
 ## Tests
 
@@ -38,6 +46,7 @@ npm test
 
 ## Project layout
 
+- `src/electron-main.js` — Electron window; starts and stops the local server
 - `src/server.js` — Express API and static UI
 - `src/crypto.js` — encrypt/decrypt vault payload (Argon2id, AES-256-GCM)
 - `src/stego.js` — PNG LSB embed/extract
