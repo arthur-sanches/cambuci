@@ -3,158 +3,359 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
     <title>Cambuci</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
-    <header class="site-header">
-      <h1>Cambuci</h1>
-      <p class="tagline">Local password vault hidden in a PNG</p>
+  <body data-view="landing">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="28" height="28">
+            <circle cx="16" cy="17" r="11" fill="#6b2d52" />
+            <circle cx="16" cy="17" r="7.5" fill="#8f3a6a" />
+            <path
+              d="M16 6c2 3 1.2 5.5 0 7-1.2-1.5-2-4 0-7z"
+              fill="#3dba7c"
+            />
+            <path
+              d="M16 6c3 .6 5 2.4 6 4-2.2.2-4.2-1-6-4z"
+              fill="#2f8f5e"
+            />
+          </svg>
+        </span>
+        <div class="brand-text">
+          <h1>Cambuci</h1>
+          <p class="tagline">Local vault, hidden in a PNG</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <span id="vault-file-chip" class="file-chip hidden"></span>
+      </div>
+      <div class="header-actions">
+        <button type="button" id="btn-save" class="primary hidden">
+          Save image
+        </button>
+        <button type="button" id="btn-lock" class="hidden">Lock</button>
+      </div>
     </header>
 
     <main>
-      <section id="landing" class="panel">
-        <h2>Welcome</h2>
-        <p class="hint">
-          Your vault lives only in your PNG image and master password. Nothing
-          leaves this machine.
-        </p>
-        <div class="landing-actions">
-          <button type="button" id="btn-show-unlock" class="primary">
-            Unlock vault
-          </button>
-          <button type="button" id="btn-show-new">Create new vault</button>
-        </div>
-      </section>
-
-      <section id="unlock-form" class="panel hidden">
-        <h2>Unlock vault</h2>
-        <form id="form-unlock">
-          <label>
-            Vault PNG
-            <input type="file" name="image" accept="image/png" required />
-          </label>
+      <section id="landing" class="auth-screen">
+        <div class="auth-card">
+          <p class="eyebrow">Fully local</p>
+          <h2>Your passwords never leave this machine</h2>
           <p class="hint">
-            <button type="button" class="linkish open-vault-file">Open PNG on disk…</button>
-            <span id="unlock-file-label"></span>
+            The vault is encrypted, then hidden inside a PNG you keep. Losing
+            that image or your master password means losing the vault.
           </p>
-          <label>
-            Master password
-            <input type="password" name="masterPassword" autocomplete="current-password" required />
-          </label>
-          <div class="form-actions">
-            <button type="submit" class="primary">Unlock</button>
-            <button type="button" class="linkish" data-back>Back</button>
-          </div>
-        </form>
-      </section>
-
-      <section id="new-form" class="panel hidden">
-        <h2>Create new vault</h2>
-        <form id="form-new">
-          <label>
-            Cover PNG (any image; vault data will be hidden inside)
-            <input type="file" name="image" accept="image/png" required />
-          </label>
-          <p class="hint">
-            <button type="button" class="linkish open-vault-file">Open PNG on disk…</button>
-            <span id="new-file-label"></span>
-          </p>
-          <label>
-            Master password (min 12 characters)
-            <input type="password" name="masterPassword" autocomplete="new-password" required minlength="12" />
-          </label>
-          <label>
-            Confirm master password
-            <input type="password" name="masterPasswordConfirm" autocomplete="new-password" required minlength="12" />
-          </label>
-          <div class="form-actions">
-            <button type="submit" class="primary">Create vault</button>
-            <button type="button" class="linkish" data-back>Back</button>
-          </div>
-        </form>
-      </section>
-
-      <section id="vault-ui" class="hidden">
-        <div class="vault-toolbar">
-          <input type="search" id="service-filter" placeholder="Filter services…" />
-          <div class="toolbar-buttons">
-            <button type="button" id="btn-save" class="primary">Save image</button>
-            <button type="button" id="btn-lock">Lock</button>
-          </div>
-        </div>
-        <p id="capacity-warning" class="warning hidden"></p>
-        <div class="vault-layout">
-          <aside class="service-list-wrap">
-            <h3>Services</h3>
-            <ul id="service-list"></ul>
-            <form id="form-add-service" class="inline-form">
-              <input type="text" name="name" placeholder="New service name" required />
-              <input type="text" name="login" placeholder="Login / email" required />
-              <input type="password" name="password" placeholder="Password" required />
-              <button type="submit">Add service</button>
-            </form>
-          </aside>
-          <section class="login-panel">
-            <h3 id="selected-service-title">Select a service</h3>
-            <div id="login-empty" class="hint">Choose a service to view logins.</div>
-            <table id="login-table" class="hidden">
-              <thead>
-                <tr>
-                  <th>Login</th>
-                  <th>Password</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="login-rows"></tbody>
-            </table>
-            <form id="form-add-login" class="inline-form hidden">
-              <input type="text" name="login" placeholder="New login" required />
-              <input type="password" name="password" placeholder="Password" required />
-              <button type="submit">Add login</button>
-            </form>
-            <button type="button" id="btn-delete-service" class="hidden danger-text">
-              Delete service
+          <div class="landing-actions">
+            <button type="button" id="btn-show-unlock" class="primary">
+              Unlock vault
             </button>
+            <button type="button" id="btn-show-new">Create new vault</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="unlock-form" class="auth-screen hidden">
+        <div class="auth-card">
+          <h2>Unlock vault</h2>
+          <p class="hint">Open the PNG that holds your vault.</p>
+          <form id="form-unlock">
+            <label class="dropzone">
+              <input type="file" name="image" accept="image/png" required />
+              <span class="dropzone-title">Drop a PNG here</span>
+              <span class="dropzone-sub">or click to choose a file</span>
+              <span id="unlock-file-label" class="file-chip hidden"></span>
+            </label>
+            <p class="hint dropzone-extra">
+              <button type="button" class="linkish open-vault-file">
+                Open PNG on disk…
+              </button>
+              so later saves can write back to the same file.
+            </p>
+            <label>
+              Master password
+              <input
+                type="password"
+                name="masterPassword"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="primary">Unlock</button>
+              <button type="button" class="ghost" data-back>Back</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="new-form" class="auth-screen hidden">
+        <div class="auth-card">
+          <h2>Create new vault</h2>
+          <p class="hint">
+            Pick any PNG as a cover. Vault data is hidden in its pixels.
+          </p>
+          <form id="form-new">
+            <label class="dropzone">
+              <input type="file" name="image" accept="image/png" required />
+              <span class="dropzone-title">Drop a cover PNG here</span>
+              <span class="dropzone-sub">or click to choose a file</span>
+              <span id="new-file-label" class="file-chip hidden"></span>
+            </label>
+            <p class="hint dropzone-extra">
+              <button type="button" class="linkish open-vault-file">
+                Open PNG on disk…
+              </button>
+              to save back into that file later.
+            </p>
+            <label>
+              Master password
+              <span class="field-hint">At least 12 characters</span>
+              <input
+                type="password"
+                name="masterPassword"
+                autocomplete="new-password"
+                required
+                minlength="12"
+              />
+            </label>
+            <label>
+              Confirm master password
+              <input
+                type="password"
+                name="masterPasswordConfirm"
+                autocomplete="new-password"
+                required
+                minlength="12"
+              />
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="primary">Create vault</button>
+              <button type="button" class="ghost" data-back>Back</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="vault-ui" class="vault-screen hidden">
+        <p id="capacity-warning" class="banner warning hidden"></p>
+        <div class="vault-layout">
+          <aside class="sidebar">
+            <div class="sidebar-head">
+              <h2>Services</h2>
+              <button type="button" id="btn-open-add-service" class="small">
+                Add
+              </button>
+            </div>
+            <input
+              type="search"
+              id="service-filter"
+              placeholder="Filter services…"
+              autocomplete="off"
+            />
+            <ul id="service-list"></ul>
+            <p id="service-empty" class="empty-note hidden">
+              No services yet. Add one to get started.
+            </p>
+          </aside>
+
+          <section class="login-panel">
+            <div class="login-panel-head">
+              <div>
+                <p class="eyebrow">Service</p>
+                <h2 id="selected-service-title">Select a service</h2>
+              </div>
+              <button
+                type="button"
+                id="btn-delete-service"
+                class="danger-text hidden"
+              >
+                Delete service
+              </button>
+            </div>
+            <div id="login-empty" class="empty-state">
+              <p>Choose a service to view and copy logins.</p>
+            </div>
+            <div id="login-table" class="login-list hidden">
+              <div id="login-rows"></div>
+            </div>
+            <form id="form-add-login" class="composer hidden">
+              <h3>Add login</h3>
+              <div class="composer-grid">
+                <input
+                  type="text"
+                  name="login"
+                  placeholder="Login / email"
+                  required
+                  autocomplete="off"
+                />
+                <div class="pw-compose">
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    required
+                    autocomplete="new-password"
+                  />
+                  <button type="button" class="generate-into" data-for="password">
+                    Generate
+                  </button>
+                </div>
+                <button type="submit" class="primary">Add login</button>
+              </div>
+            </form>
           </section>
         </div>
 
         <details class="generator-panel">
           <summary>Password generator</summary>
           <form id="form-generate">
-            <label>
+            <label class="length-field">
               Length
               <input type="number" name="length" min="12" max="64" value="20" />
             </label>
-            <label><input type="checkbox" name="uppercase" checked /> Uppercase</label>
-            <label><input type="checkbox" name="lowercase" checked /> Lowercase</label>
-            <label><input type="checkbox" name="digits" checked /> Digits</label>
-            <label><input type="checkbox" name="symbols" checked /> Symbols</label>
-            <button type="submit">Generate</button>
+            <label class="check"
+              ><input type="checkbox" name="uppercase" checked />
+              Uppercase</label
+            >
+            <label class="check"
+              ><input type="checkbox" name="lowercase" checked />
+              Lowercase</label
+            >
+            <label class="check"
+              ><input type="checkbox" name="digits" checked /> Digits</label
+            >
+            <label class="check"
+              ><input type="checkbox" name="symbols" checked /> Symbols</label
+            >
+            <button type="submit" class="primary">Generate</button>
             <output id="generated-password"></output>
-            <button type="button" id="btn-copy-generated" class="hidden">Copy</button>
+            <button type="button" id="btn-copy-generated" class="hidden">
+              Copy
+            </button>
           </form>
         </details>
       </section>
 
-      <p id="global-error" class="error hidden" role="alert"></p>
+      <p id="global-error" class="banner error hidden" role="alert"></p>
     </main>
 
-    <dialog id="save-dialog">
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <dialog id="save-dialog" class="modal">
       <form id="form-save">
         <h3>Save vault image</h3>
         <p class="hint">
-          Saves back into the same PNG you opened. Losing that file or your
-          master password means losing the vault.
+          Writes the encrypted vault back into your PNG. Keep that file and your
+          master password safe.
         </p>
-        <p id="save-target-name" class="hint"></p>
+        <p id="save-target-name" class="file-chip"></p>
         <label>
           Master password
-          <input type="password" name="masterPassword" autocomplete="current-password" required minlength="12" />
+          <input
+            type="password"
+            name="masterPassword"
+            autocomplete="current-password"
+            required
+            minlength="12"
+          />
         </label>
         <div class="form-actions">
           <button type="submit" value="save" class="primary">Save image</button>
-          <button type="button" value="cancel" id="save-cancel">Cancel</button>
+          <button type="button" value="cancel" id="save-cancel" class="ghost">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="add-service-dialog" class="modal">
+      <form id="form-add-service">
+        <h3>Add service</h3>
+        <label>
+          Service name
+          <input type="text" name="name" placeholder="GitHub" required />
+        </label>
+        <label>
+          Login / email
+          <input type="text" name="login" required autocomplete="off" />
+        </label>
+        <label>
+          Password
+          <div class="pw-compose">
+            <input
+              type="password"
+              name="password"
+              required
+              autocomplete="new-password"
+            />
+            <button type="button" class="generate-into" data-for="password">
+              Generate
+            </button>
+          </div>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="primary">Add service</button>
+          <button type="button" class="ghost" id="add-service-cancel">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="edit-login-dialog" class="modal">
+      <form id="form-edit-login">
+        <h3>Edit password</h3>
+        <p id="edit-login-name" class="hint"></p>
+        <label>
+          New password
+          <div class="pw-compose">
+            <input
+              type="password"
+              name="password"
+              required
+              autocomplete="new-password"
+            />
+            <button type="button" class="generate-into" data-for="password">
+              Generate
+            </button>
+          </div>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="primary">Save</button>
+          <button type="button" class="ghost" id="edit-login-cancel">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="rename-login-dialog" class="modal">
+      <form id="form-rename-login">
+        <h3>Rename login</h3>
+        <label>
+          Login / email
+          <input type="text" name="newLogin" required autocomplete="off" />
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="primary">Rename</button>
+          <button type="button" class="ghost" id="rename-login-cancel">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="modal">
+      <form id="form-confirm" method="dialog">
+        <h3 id="confirm-title">Confirm</h3>
+        <p id="confirm-message" class="hint"></p>
+        <div class="form-actions">
+          <button type="submit" value="yes" class="danger">Delete</button>
+          <button type="submit" value="no" class="ghost">Cancel</button>
         </div>
       </form>
     </dialog>

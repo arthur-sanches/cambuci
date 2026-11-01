@@ -7,26 +7,50 @@ let lastGenerated = '';
 let vaultSourceFile = null;
 let vaultFileHandle = null;
 let vaultFileName = 'vault.png';
+let pendingEditLogin = null;
+let pendingRenameLogin = null;
+let toastTimer = null;
 
 function setVaultSource(file, handle = null) {
   vaultSourceFile = file;
   vaultFileHandle = handle;
   vaultFileName = file.name || 'vault.png';
-  const label = `Selected: ${vaultFileName}`;
-  const unlockLbl = $('#unlock-file-label');
-  const newLbl = $('#new-file-label');
-  if (unlockLbl) unlockLbl.textContent = label;
-  if (newLbl) newLbl.textContent = label;
+  const label = vaultFileName;
+  for (const id of ['unlock-file-label', 'new-file-label']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.textContent = label;
+    el.classList.remove('hidden');
+  }
+  updateHeaderFileChip();
 }
 
 function clearVaultSource() {
   vaultSourceFile = null;
   vaultFileHandle = null;
   vaultFileName = 'vault.png';
-  const unlockLbl = $('#unlock-file-label');
-  const newLbl = $('#new-file-label');
-  if (unlockLbl) unlockLbl.textContent = '';
-  if (newLbl) newLbl.textContent = '';
+  for (const id of ['unlock-file-label', 'new-file-label']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.textContent = '';
+    el.classList.add('hidden');
+  }
+  $$('input[name=image]').forEach((input) => {
+    input.value = '';
+  });
+  updateHeaderFileChip();
+}
+
+function updateHeaderFileChip() {
+  const chip = $('#vault-file-chip');
+  const unlocked = document.body.dataset.view === 'vault-ui';
+  if (!unlocked || !vaultFileName) {
+    chip.classList.add('hidden');
+    chip.textContent = '';
+    return;
+  }
+  chip.textContent = vaultFileName;
+  chip.classList.remove('hidden');
 }
 
 function vaultImageFromForm(form) {
@@ -45,11 +69,21 @@ function buildVaultFormData(form, fields) {
   return fd;
 }
 
+function assignFileToInput(input, file) {
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+}
+
+function isPngFile(file) {
+  return file && (file.type === 'image/png' || /\.png$/i.test(file.name));
+}
+
 async function openVaultPngOnDisk() {
   showError('');
   if (!window.showOpenFilePicker) {
     showError(
-      'Use the file chooser above. In-place save on disk needs Chrome or Edge.'
+      'Use the file chooser above. In-place save on disk needs a Chromium file picker.'
     );
     return;
   }
@@ -59,9 +93,13 @@ async function openVaultPngOnDisk() {
       mode: 'readwrite',
     });
     const file = await handle.getFile();
-    if (file.type && file.type !== 'image/png') {
+    if (!isPngFile(file)) {
       throw new Error('Only PNG images are supported');
     }
+    const input =
+      document.querySelector('#unlock-form:not(.hidden) input[name=image]') ||
+      document.querySelector('#new-form:not(.hidden) input[name=image]');
+    if (input) assignFileToInput(input, file);
     setVaultSource(file, handle);
   } catch (err) {
     if (err.name !== 'AbortError') {
@@ -78,6 +116,28 @@ $$('input[name=image]').forEach((input) => {
   input.addEventListener('change', () => {
     const file = input.files?.[0];
     if (file) setVaultSource(file, null);
+  });
+});
+
+$$('.dropzone').forEach((zone) => {
+  const input = zone.querySelector('input[name=image]');
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('dragover');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!isPngFile(file)) {
+      showError('Only PNG images are supported');
+      return;
+    }
+    showError('');
+    assignFileToInput(input, file);
+    setVaultSource(file, null);
   });
 });
 
@@ -142,12 +202,25 @@ function showError(msg) {
   el.classList.remove('hidden');
 }
 
+function showToast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), 2200);
+}
+
 function showView(id) {
   ['landing', 'unlock-form', 'new-form', 'vault-ui'].forEach((view) => {
     const el = document.getElementById(view);
     if (view === id) el.classList.remove('hidden');
     else el.classList.add('hidden');
   });
+  document.body.dataset.view = id;
+  const unlocked = id === 'vault-ui';
+  $('#btn-save').classList.toggle('hidden', !unlocked);
+  $('#btn-lock').classList.toggle('hidden', !unlocked);
+  updateHeaderFileChip();
   showError('');
 }
 
@@ -175,6 +248,42 @@ async function apiForm(url, formData) {
   return data;
 }
 
+async function generatePassword(overrides = {}) {
+  const form = $('#form-generate');
+  const fd = new FormData(form);
+  const body = {
+    length: Number(fd.get('length') || 20),
+    uppercase: fd.get('uppercase') === 'on',
+    lowercase: fd.get('lowercase') === 'on',
+    digits: fd.get('digits') === 'on',
+    symbols: fd.get('symbols') === 'on',
+    ...overrides,
+  };
+  const data = await apiJson('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return data.password;
+}
+
+$$('.generate-into').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const form = btn.closest('form');
+    const input = form?.elements?.[btn.dataset.for];
+    if (!input) return;
+    try {
+      const password = await generatePassword();
+      input.value = password;
+      input.type = 'text';
+      input.focus();
+      input.select();
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+});
+
 $('#btn-show-unlock').addEventListener('click', () => showView('unlock-form'));
 $('#btn-show-new').addEventListener('click', () => showView('new-form'));
 $$('[data-back]').forEach((btn) =>
@@ -191,7 +300,7 @@ $('#form-unlock').addEventListener('submit', async (e) => {
     });
     const data = await apiForm('/api/vault/unlock', fd);
     if (data.coverFileName) vaultFileName = data.coverFileName;
-    await loadVault();
+    await loadVault({ keepSelection: false });
     showView('vault-ui');
   } catch (err) {
     showError(err.message);
@@ -209,17 +318,19 @@ $('#form-new').addEventListener('submit', async (e) => {
     });
     const data = await apiForm('/api/vault/new', fd);
     if (data.coverFileName) vaultFileName = data.coverFileName;
-    await loadVault();
+    await loadVault({ keepSelection: false });
     showView('vault-ui');
   } catch (err) {
     showError(err.message);
   }
 });
 
-async function loadVault() {
+async function loadVault({ keepSelection = true } = {}) {
   const data = await apiJson('/api/vault');
   vault = data.vault || {};
-  selectedService = null;
+  if (!keepSelection || !selectedService || !Object.hasOwn(vault, selectedService)) {
+    selectedService = null;
+  }
   renderServices();
   renderLogins();
   await refreshCapacity();
@@ -230,27 +341,56 @@ function serviceNames() {
 }
 
 function renderServices() {
-  const filter = ($('#service-filter').value || '').trim().toLowerCase();
+  const filterInput = $('#service-filter');
+  const names = serviceNames();
+  filterInput.classList.toggle('hidden', names.length === 0);
+  const filter = (filterInput.value || '').trim().toLowerCase();
   const ul = $('#service-list');
   ul.innerHTML = '';
-  for (const name of serviceNames()) {
+  let shown = 0;
+  for (const name of names) {
     if (filter && !name.toLowerCase().includes(filter)) continue;
+    shown += 1;
+    const count = Object.keys(vault[name] || {}).length;
     const li = document.createElement('li');
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = name;
+    const label = document.createElement('span');
+    label.textContent = name;
+    const badge = document.createElement('span');
+    badge.className = 'service-count';
+    badge.textContent = String(count);
     if (name === selectedService) btn.classList.add('active');
     btn.addEventListener('click', () => {
       selectedService = name;
       renderServices();
       renderLogins();
     });
+    btn.append(label, badge);
     li.appendChild(btn);
     ul.appendChild(li);
+  }
+  const empty = $('#service-empty');
+  if (names.length === 0) {
+    empty.textContent = 'No services yet. Add one to get started.';
+    empty.classList.remove('hidden');
+  } else if (shown === 0) {
+    empty.textContent = 'No services match that filter.';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
   }
 }
 
 $('#service-filter').addEventListener('input', renderServices);
+
+function flashCopied(btn) {
+  const prev = btn.textContent;
+  btn.textContent = 'Copied';
+  setTimeout(() => {
+    btn.textContent = prev;
+  }, 1200);
+}
 
 function renderLogins() {
   const title = $('#selected-service-title');
@@ -278,12 +418,29 @@ function renderLogins() {
 
   const logins = vault[selectedService];
   for (const [login, password] of Object.entries(logins)) {
-    const tr = document.createElement('tr');
-    const tdLogin = document.createElement('td');
-    tdLogin.className = 'col-login';
-    tdLogin.textContent = login;
-    const tdPw = document.createElement('td');
-    tdPw.className = 'col-password';
+    const card = document.createElement('article');
+    card.className = 'login-card';
+
+    const id = document.createElement('div');
+    id.className = 'login-id';
+    id.textContent = login;
+
+    const tdAct = document.createElement('div');
+    tdAct.className = 'login-actions';
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => openEditLogin(login, password));
+    const renBtn = document.createElement('button');
+    renBtn.type = 'button';
+    renBtn.textContent = 'Rename';
+    renBtn.addEventListener('click', () => openRenameLogin(login));
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => deleteLogin(login));
+    tdAct.append(editBtn, renBtn, delBtn);
+
     const wrap = document.createElement('div');
     wrap.className = 'pw-field';
     const input = document.createElement('input');
@@ -306,78 +463,111 @@ function renderLogins() {
     const copyBtn = document.createElement('button');
     copyBtn.type = 'button';
     copyBtn.textContent = 'Copy';
-    copyBtn.addEventListener('click', () =>
-      navigator.clipboard.writeText(password)
-    );
-    const pwActions = document.createElement('div');
-    pwActions.className = 'pw-field-actions';
-    pwActions.append(showBtn, copyBtn);
-    wrap.append(input, pwActions);
-    tdPw.appendChild(wrap);
+    copyBtn.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(password);
+      flashCopied(copyBtn);
+      showToast('Password copied');
+    });
+    wrap.append(input, showBtn, copyBtn);
 
-    const tdAct = document.createElement('td');
-    tdAct.className = 'actions col-actions';
-    const editBtn = document.createElement('button');
-    editBtn.type = 'button';
-    editBtn.textContent = 'Edit';
-    editBtn.addEventListener('click', () => editLogin(login, password));
-    const renBtn = document.createElement('button');
-    renBtn.type = 'button';
-    renBtn.textContent = 'Rename';
-    renBtn.addEventListener('click', () => renameLoginPrompt(login));
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.textContent = 'Delete';
-    delBtn.addEventListener('click', () => deleteLogin(login));
-    tdAct.append(editBtn, renBtn, delBtn);
-
-    tr.append(tdLogin, tdPw, tdAct);
-    tbody.appendChild(tr);
+    card.append(id, tdAct, wrap);
+    tbody.appendChild(card);
   }
 }
 
-async function editLogin(login, current) {
-  const password = prompt('New password (leave blank to keep current)', current);
-  if (password === null) return;
-  const next = password === '' ? current : password;
+function openEditLogin(login, current) {
+  pendingEditLogin = login;
+  $('#edit-login-name').textContent = login;
+  const form = $('#form-edit-login');
+  form.password.value = current;
+  form.password.type = 'password';
+  $('#edit-login-dialog').showModal();
+  form.password.focus();
+}
+
+function openRenameLogin(login) {
+  pendingRenameLogin = login;
+  const form = $('#form-rename-login');
+  form.newLogin.value = login;
+  $('#rename-login-dialog').showModal();
+  form.newLogin.focus();
+  form.newLogin.select();
+}
+
+function confirmAction(title, message) {
+  return new Promise((resolve) => {
+    const dlg = $('#confirm-dialog');
+    $('#confirm-title').textContent = title;
+    $('#confirm-message').textContent = message;
+    const onClose = () => {
+      dlg.removeEventListener('close', onClose);
+      resolve(dlg.returnValue === 'yes');
+    };
+    dlg.addEventListener('close', onClose);
+    dlg.showModal();
+  });
+}
+
+$('#form-edit-login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!pendingEditLogin || !selectedService) return;
+  const password = e.target.password.value;
   try {
     await apiJson(
       `/api/services/${encodeURIComponent(selectedService)}/logins`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login, password: next }),
+        body: JSON.stringify({ login: pendingEditLogin, password }),
       }
     );
+    $('#edit-login-dialog').close();
+    pendingEditLogin = null;
     await loadVault();
-    selectedService = selectedService;
-    renderLogins();
   } catch (err) {
     showError(err.message);
   }
-}
+});
 
-async function renameLoginPrompt(oldLogin) {
-  const newLogin = prompt('New login name', oldLogin);
-  if (!newLogin || newLogin === oldLogin) return;
+$('#edit-login-cancel').addEventListener('click', () => {
+  $('#edit-login-dialog').close();
+});
+
+$('#form-rename-login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!pendingRenameLogin || !selectedService) return;
+  const newLogin = e.target.newLogin.value.trim();
+  if (!newLogin || newLogin === pendingRenameLogin) {
+    $('#rename-login-dialog').close();
+    return;
+  }
   try {
     await apiJson(
       `/api/services/${encodeURIComponent(selectedService)}/logins`,
       {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldLogin, newLogin }),
+        body: JSON.stringify({ oldLogin: pendingRenameLogin, newLogin }),
       }
     );
+    $('#rename-login-dialog').close();
+    pendingRenameLogin = null;
     await loadVault();
-    renderLogins();
   } catch (err) {
     showError(err.message);
   }
-}
+});
+
+$('#rename-login-cancel').addEventListener('click', () => {
+  $('#rename-login-dialog').close();
+});
 
 async function deleteLogin(login) {
-  if (!confirm(`Delete login "${login}"?`)) return;
+  const ok = await confirmAction(
+    'Delete login',
+    `Delete login “${login}”? This cannot be undone until you save a new image.`
+  );
+  if (!ok) return;
   try {
     const data = await apiJson(
       `/api/services/${encodeURIComponent(selectedService)}/logins`,
@@ -398,6 +588,16 @@ async function deleteLogin(login) {
   }
 }
 
+$('#btn-open-add-service').addEventListener('click', () => {
+  $('#form-add-service').reset();
+  $('#add-service-dialog').showModal();
+  $('#form-add-service').elements.name.focus();
+});
+
+$('#add-service-cancel').addEventListener('click', () => {
+  $('#add-service-dialog').close();
+});
+
 $('#form-add-service').addEventListener('submit', async (e) => {
   e.preventDefault();
   showError('');
@@ -412,10 +612,10 @@ $('#form-add-service').addEventListener('submit', async (e) => {
         password: fd.get('password'),
       }),
     });
+    selectedService = String(fd.get('name'));
     e.target.reset();
-    selectedService = fd.get('name');
+    $('#add-service-dialog').close();
     await loadVault();
-    renderLogins();
   } catch (err) {
     showError(err.message);
   }
@@ -423,15 +623,17 @@ $('#form-add-service').addEventListener('submit', async (e) => {
 
 $('#btn-delete-service').addEventListener('click', async () => {
   if (!selectedService) return;
-  if (!confirm(`Delete entire service "${selectedService}"?`)) return;
+  const ok = await confirmAction(
+    'Delete service',
+    `Delete entire service “${selectedService}” and all of its logins?`
+  );
+  if (!ok) return;
   try {
     await apiJson(`/api/services/${encodeURIComponent(selectedService)}`, {
       method: 'DELETE',
     });
     selectedService = null;
     await loadVault();
-    renderServices();
-    renderLogins();
   } catch (err) {
     showError(err.message);
   }
@@ -455,8 +657,9 @@ $('#form-add-login').addEventListener('submit', async (e) => {
       }
     );
     e.target.reset();
+    const pw = e.target.elements.password;
+    if (pw) pw.type = 'password';
     await loadVault();
-    renderLogins();
   } catch (err) {
     showError(err.message);
   }
@@ -464,21 +667,8 @@ $('#form-add-login').addEventListener('submit', async (e) => {
 
 $('#form-generate').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = {
-    length: Number(fd.get('length')),
-    uppercase: fd.get('uppercase') === 'on',
-    lowercase: fd.get('lowercase') === 'on',
-    digits: fd.get('digits') === 'on',
-    symbols: fd.get('symbols') === 'on',
-  };
   try {
-    const data = await apiJson('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    lastGenerated = data.password;
+    lastGenerated = await generatePassword();
     $('#generated-password').textContent = lastGenerated;
     $('#btn-copy-generated').classList.remove('hidden');
   } catch (err) {
@@ -486,8 +676,11 @@ $('#form-generate').addEventListener('submit', async (e) => {
   }
 });
 
-$('#btn-copy-generated').addEventListener('click', () => {
-  if (lastGenerated) navigator.clipboard.writeText(lastGenerated);
+$('#btn-copy-generated').addEventListener('click', async () => {
+  if (!lastGenerated) return;
+  await navigator.clipboard.writeText(lastGenerated);
+  flashCopied($('#btn-copy-generated'));
+  showToast('Password copied');
 });
 
 async function refreshCapacity() {
@@ -495,7 +688,7 @@ async function refreshCapacity() {
   try {
     const data = await apiJson('/api/vault/capacity');
     if (!data.fits) {
-      warn.textContent = `Warning: cover image may be too small (${data.estimatedPayloadBytes} bytes needed, ${data.capacityBytes} bytes available). Use a larger PNG before saving.`;
+      warn.textContent = `Cover image may be too small (${data.estimatedPayloadBytes} bytes needed, ${data.capacityBytes} available). Use a larger PNG before saving.`;
       warn.classList.remove('hidden');
     } else {
       warn.classList.add('hidden');
@@ -520,7 +713,7 @@ $('#btn-lock').addEventListener('click', async () => {
 const saveDialog = $('#save-dialog');
 $('#btn-save').addEventListener('click', () => {
   $('#save-target-name').textContent = vaultFileName
-    ? `File: ${vaultFileName}`
+    ? vaultFileName
     : '';
   saveDialog.showModal();
 });
@@ -535,8 +728,12 @@ $('#form-save').addEventListener('submit', async (e) => {
     await persistVaultImage(blob, filename);
     e.target.reset();
     saveDialog.close();
+    updateHeaderFileChip();
     await refreshCapacity();
+    showToast('Vault image saved');
   } catch (err) {
     showError(err.message);
   }
 });
+
+showView('landing');
